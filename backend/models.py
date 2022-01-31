@@ -54,14 +54,6 @@ class UserModel(models.Model):
     contact = models.CharField(max_length=13, verbose_name=_('contact'), default='-')
     lang = models.CharField(max_length=3, verbose_name=_('lang'))
     name = models.CharField(max_length=30, verbose_name=_('name'), default='-')
-    feedback = models.ForeignKey(
-        'CommentModel',
-        on_delete=models.PROTECT,
-        related_name='authors',
-        verbose_name=_('feedback'),
-        null=True,
-        blank=True
-    )
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('created_at'))
 

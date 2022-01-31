@@ -5,12 +5,13 @@ import telebot
 from django.http import HttpResponse
 from telebot import types
 
-from .keyboards import *
+from .keyboards import contact_btn, go_back, meal_menu, change_settings, menu_keyboard, choices_keyboard, lang_list, \
+    skip, meal_category_menu
 from backend.models import UserModel, CommentModel
 
 bot = telebot.TeleBot(os.environ.get('BOT_TOKEN'))
 
-URL = 'https://api.telegram.org/bot5044997414:AAG5L-lQHbCmjn-7kQaSCaMJmiEOlMjv5d0/en/webhook'
+URL = 'https://api.telegram.org/bot5044997414:AAG5L-lQHbCmjn-7kQaSCaMJmiEOlMjv5d0/setWebhook?url=https://55c8-84-54-74-58.ngrok.io/en/webhook/'
 
 
 def web_hook_view(request):
@@ -20,7 +21,36 @@ def web_hook_view(request):
     return HttpResponse('ok', status=200)
 
 
-@bot.message_handler(content_types=['contact'])
+def ask_name(message):
+    if message.text == 'uz' or message.text == 'ru':
+        tg_user = UserModel.objects.get(tg_id=message.from_user.id)
+
+        tg_user.lang = message.text
+        tg_user.save()
+
+    bot.send_message(
+        message.chat.id,
+        'Iltimos ismingizni kiriting',
+        reply_markup=skip()
+    )
+    bot.register_next_step_handler(message, create_user)
+
+
+def create_user(message):
+    if message.text == 'skip':
+        get_contact(message)
+
+    else:
+        tg_user = UserModel.objects.get(tg_id=message.from_user.id)
+        bot.send_message(
+            message.chat.id,
+            'Katta rahmat, sizni bazamizga kiritib qo`ydik'
+        )
+        tg_user.name = message.text
+        tg_user.save()
+        get_contact(message)
+
+
 def get_contact(message):
     markup = contact_btn()
     bot.send_message(message.chat.id, 'raqamingizni yuboring', reply_markup=markup)
@@ -28,31 +58,48 @@ def get_contact(message):
 
 
 def save_contact(message):
-    tg_user = UserModel.objects.get(tg_id=message.from_user.id)
-    tg_user.contact = message.contact.phone_number
-    tg_user.save()
+    if message.text == 'skip':
+        bot.send_message(message.chat.id, 'skipped', reply_markup=types.ReplyKeyboardRemove())
+        choose(message)
 
-    bot.send_message(message.chat.id, 'Sizni bizning bazaga yozib qo`ydik', reply_markup=types.ReplyKeyboardRemove())
-    choose(message)
+    else:
+        tg_user = UserModel.objects.get(tg_id=message.from_user.id)
+        tg_user.contact = message.contact.phone_number
+        tg_user.save()
+
+        bot.send_message(
+            message.chat.id,
+            'Sizni bizning bazaga yozib qo`ydik',
+        )
+        get_user_location(message)
 
 
-def create_user(message):
-    tg_user = UserModel.objects.get(tg_id=message.from_user.id)
+@bot.message_handler(commands=['location'])
+def get_user_location(message):
+    markup = types.ReplyKeyboardMarkup()
+    markup.add(types.KeyboardButton(text='location', request_location=True))
+    bot.send_message(message.chat.id, 'send your location', reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda x: x.data == 'set_name' or x.data == 'set_num' or x.data == 'set_lang')
+def set_info(call):
+    if call.data == 'set_name':
+        ask_name(call.message)
+    elif call.data == 'set_lang':
+        choose_lang(call.message)
+    elif call.data == 'set_num':
+        get_contact(call.message)
+
+
+def choose(message):
+    markup = choices_keyboard()
     bot.send_message(
         message.chat.id,
-        'Katta rahmat, sizni bazamizga kiritib qo`ydik'
+        'Xohlagan harakatni tanlang \U0001F642\n\n'
+        'Agar fikringizni qoldirmoqchi bo\'lsangiz \n\n'
+        '"/comment" ni bosing yoki yozing',
+        reply_markup=markup
     )
-    get_contact(message)
-    tg_user.name = message.text
-    tg_user.save()
-
-
-def ask_name(message):
-    bot.send_message(
-        message.chat.id,
-        'Iltimos ismingizni kiriting'
-    )
-    bot.register_next_step_handler(message, create_user)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'contact')
@@ -62,16 +109,8 @@ def contact_num(call):
         '+998 97 777-77-77',
         call.message.chat.id,
         call.message.id,
-        reply_markup=markup,
+        reply_markup=markup
     )
-
-
-@bot.callback_query_handler(func=lambda x: x.data == 'set_name' or x.data == 'set_num')
-def set_info(call):
-    if call.data == 'set_name':
-        ask_name(call.message)
-    else:
-        create_user(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'go_back')
@@ -84,11 +123,16 @@ def back(call):
 def order_menu(call):
     markup = meal_menu()
     bot.edit_message_text(
-        'Choose what you want',
+        'Xohlaganingizni tanlashingiz mumkin \U0001F642',
         call.message.chat.id,
         call.message.id,
         reply_markup=markup
     )
+    bot.register_next_step_handler(call.message, meal)
+
+
+def meal(message):
+    print(message)
 
 
 @bot.callback_query_handler(func=lambda x: x.data == 'get_settings')
@@ -97,7 +141,8 @@ def settings(call):
     tg_user = UserModel.objects.get(tg_id=call.from_user.id)
     bot.edit_message_text(
         f'Name: {tg_user.name}\n'
-        f'Phone number: +{tg_user.contact}',
+        f'Phone number: +{tg_user.contact}\n'
+        f'Language: {tg_user.lang}',
         call.message.chat.id,
         call.message.id,
         reply_markup=markup
@@ -113,17 +158,6 @@ def menu(message):
     )
 
 
-def choose(message):
-    markup = choices_keyboard()
-    bot.send_message(
-        message.chat.id,
-        'Choose any one\n\n'
-        'Agar fikringizni qoldirmoqchi bo\'lsangiz \n\n'
-        '"/comment" ni yozing',
-        reply_markup=markup
-    )
-
-
 @bot.message_handler(commands=['comment'])
 def comment(message):
     bot.send_message(
@@ -135,11 +169,24 @@ def comment(message):
 
 
 def save_comment(message):
+    comments = CommentModel.objects.all()
     print(message.text)
     tg_user = UserModel.objects.get(tg_id=message.from_user.id)
-    tg_user.feedback += message.text
-
+    print(message.text)
+    comments.add(author=tg_user.name, comment=message.text)
+    print(message.text)
     choose(message)
+
+
+def choose_lang(message):
+    markup = lang_list()
+    bot.send_message(
+        message.chat.id,
+        'Tilni tanlang',
+        reply_markup=markup
+    )
+
+    bot.register_next_step_handler(message, ask_name)
 
 
 @bot.message_handler(commands=['start'])
@@ -154,4 +201,8 @@ def command_start(message):
         choose(message)
     except UserModel.DoesNotExist:
         tg_user = UserModel.objects.create(tg_id=message.from_user.id)
-        ask_name(message)
+        bot.send_message(
+            message.chat.id,
+            'Bu bot test holatida iwlamoqda va bu bot orqali yegulik buyurtma bera olmaysz, tuwunganingiz un rahmat'
+        )
+        choose_lang(message)

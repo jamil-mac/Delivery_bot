@@ -38,7 +38,7 @@ class OrderModelAdmin(admin.ModelAdmin):
 
 class CommentInline(admin.TabularInline):
     model = CommentModel
-    extra = 0
+    extra = 1
 
 
 class UserModelAdmin(admin.ModelAdmin):
@@ -46,5 +46,7 @@ class UserModelAdmin(admin.ModelAdmin):
         CommentInline
     ]
 
+
+admin.site.register(CommentModel)
 
 admin.site.register(UserModel, UserModelAdmin)
