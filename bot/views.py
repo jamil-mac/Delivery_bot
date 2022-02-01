@@ -146,7 +146,7 @@ def order_menu(call):
     )
 
 
-def meal(message, pk):
+def meal(message):
     print(message)
 
 
