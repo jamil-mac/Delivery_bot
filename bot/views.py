@@ -5,16 +5,17 @@ import telebot
 from django.http import HttpResponse
 from telebot import types
 
-from .keyboards import contact_btn, go_back, meal_menu, change_settings, menu_keyboard, choices_keyboard, lang_list, \
-    skip, meal_category_menu, back_with_location
+from .keyboards import contact_btn, go_back, meal_menu, change_settings, choices_keyboard, lang_list, \
+    skip, meal_category_menu
 from backend.models import UserModel, CommentModel
 
-bot = telebot.TeleBot(os.environ.get('BOT_TOKEN'))
+bot = telebot.TeleBot(os.environ.get('BOT_TOKEN'), parse_mode='HTML')
 
 URL = 'https://api.telegram.org/bot5044997414:AAG5L-lQHbCmjn-7kQaSCaMJmiEOlMjv5d0/setWebhook?url=https://55c8-84-54-74-58.ngrok.io/en/webhook/'
 
 
 def web_hook_view(request):
+    """ setting webhook """
     if request.method == "POST":
         bot.process_new_updates([telebot.types.Update.de_json(request.body.decode('utf-8'))])
         return HttpResponse('ok', status=200)
@@ -22,6 +23,7 @@ def web_hook_view(request):
 
 
 def ask_name(message):
+    """ Here we save language and after we ask user's name """
     if message.text == 'uz' or message.text == 'ru':
         tg_user = UserModel.objects.get(tg_id=message.from_user.id)
 
@@ -37,6 +39,7 @@ def ask_name(message):
 
 
 def create_user(message):
+    """ Here we save user """
     if message.text == 'skip':
         get_contact(message)
 
@@ -52,12 +55,14 @@ def create_user(message):
 
 
 def get_contact(message):
+    """ get user contact number """
     markup = contact_btn()
     bot.send_message(message.chat.id, 'raqamingizni yuboring', reply_markup=markup)
     bot.register_next_step_handler(message, save_contact)
 
 
 def save_contact(message):
+    """ Save or skip contact information """
     if message.text == 'skip':
         bot.send_message(message.chat.id, 'skipped', reply_markup=types.ReplyKeyboardRemove())
         choose(message)
@@ -76,6 +81,7 @@ def save_contact(message):
 
 @bot.message_handler(commands=['location'])
 def get_user_location(message):
+    """ Here user should send his location, for deliverymen """
     markup = types.ReplyKeyboardMarkup()
     markup.add(types.KeyboardButton(text='location', request_location=True))
     bot.send_message(message.chat.id, 'send your location', reply_markup=markup)
@@ -83,6 +89,7 @@ def get_user_location(message):
 
 @bot.callback_query_handler(func=lambda x: x.data == 'set_name' or x.data == 'set_num' or x.data == 'set_lang')
 def set_info(call):
+    """ Settings where user can set his information """
     if call.data == 'set_name':
         ask_name(call.message)
     elif call.data == 'set_lang':
@@ -92,25 +99,30 @@ def set_info(call):
 
 
 def choose(message):
+    """ Menu """
     markup = choices_keyboard()
     bot.send_message(
         message.chat.id,
-        'Xohlagan harakatni tanlang \U0001F642\n\n'
-        'Agar fikringizni qoldirmoqchi bo\'lsangiz \n\n'
-        '"/comment" ni bosing yoki yozing',
-        reply_markup=markup
+        'Xohlagan harakatni tanlang \U0001F642 \n\n'
+        'Agar fikringizni qoldirmoqchi bo\'lsangiz \n'
+        '<i>"/comment"</i> ni bosing yoki yozing',
+        reply_markup=markup,
     )
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'contact')
 def contact_num(call):
     """ Contact information about cafe """
-    markup = back_with_location()
+    markup = go_back()
     bot.edit_message_text(
-        '+998 97 777-77-77 \n'
-        'if you wanna know about location, press the "location" button',
+        'Call center: +998 97 777-77-77',
         call.message.chat.id,
-        call.message.id,
+        call.message.id
+    )
+    bot.send_location(
+        call.message.chat.id,
+        latitude=41.3521161,
+        longitude=69.2041481,
         reply_markup=markup
     )
 
@@ -125,23 +137,22 @@ def back(call):
 @bot.callback_query_handler(func=lambda call: call.data == 'order')
 def order_menu(call):
     """ List of meal which cafe could deliver """
-    markup = meal_menu()
+    markup = meal_category_menu()
     bot.edit_message_text(
         'Xohlaganingizni tanlashingiz mumkin \U0001F642',
         call.message.chat.id,
         call.message.id,
         reply_markup=markup
     )
-    bot.register_next_step_handler(call.message, meal)
 
 
-def meal(message):
+def meal(message, pk):
     print(message)
 
 
 @bot.callback_query_handler(func=lambda x: x.data == 'get_settings')
 def settings(call):
-    """ For set user's data, such as name, phone number or language """
+    """ For set user's data, such as name, phone number and language """
     markup = change_settings()
     tg_user = UserModel.objects.get(tg_id=call.from_user.id)
     bot.edit_message_text(
@@ -150,16 +161,6 @@ def settings(call):
         f'Language: {tg_user.lang}',
         call.message.chat.id,
         call.message.id,
-        reply_markup=markup
-    )
-
-
-def menu(message):
-    """ For seeing categories of meal """
-    markup = menu_keyboard()
-    bot.send_message(
-        message.chat.id,
-        'xohlaganingizni tanlashingiz mumkin',
         reply_markup=markup
     )
 
@@ -212,6 +213,7 @@ def command_start(message):
         tg_user = UserModel.objects.create(tg_id=message.from_user.id)
         bot.send_message(
             message.chat.id,
-            'Bu bot test holatida iwlamoqda va bu bot orqali yegulik buyurtma bera olmaysz, tuwunganingiz un rahmat'  # I must change words here!
+            'Bu bot test holatida iwlamoqda va bu bot orqali yegulik buyurtma bera olmaysz, tuwunganingiz un rahmat'
+            # I must change words here!
         )
         choose_lang(message)
