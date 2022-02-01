@@ -6,7 +6,7 @@ from django.http import HttpResponse
 from telebot import types
 
 from .keyboards import contact_btn, go_back, meal_menu, change_settings, menu_keyboard, choices_keyboard, lang_list, \
-    skip, meal_category_menu
+    skip, meal_category_menu, back_with_location
 from backend.models import UserModel, CommentModel
 
 bot = telebot.TeleBot(os.environ.get('BOT_TOKEN'))
@@ -104,9 +104,11 @@ def choose(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'contact')
 def contact_num(call):
-    markup = go_back()
+    """ Contact information about cafe """
+    markup = back_with_location()
     bot.edit_message_text(
-        '+998 97 777-77-77',
+        '+998 97 777-77-77 \n'
+        'if you wanna know about location, press the "location" button',
         call.message.chat.id,
         call.message.id,
         reply_markup=markup
@@ -115,12 +117,14 @@ def contact_num(call):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'go_back')
 def back(call):
+    """ button 'back' """
     bot.delete_message(call.message.chat.id, call.message.id)
     choose(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'order')
 def order_menu(call):
+    """ List of meal which cafe could deliver """
     markup = meal_menu()
     bot.edit_message_text(
         'Xohlaganingizni tanlashingiz mumkin \U0001F642',
@@ -137,6 +141,7 @@ def meal(message):
 
 @bot.callback_query_handler(func=lambda x: x.data == 'get_settings')
 def settings(call):
+    """ For set user's data, such as name, phone number or language """
     markup = change_settings()
     tg_user = UserModel.objects.get(tg_id=call.from_user.id)
     bot.edit_message_text(
@@ -150,6 +155,7 @@ def settings(call):
 
 
 def menu(message):
+    """ For seeing categories of meal """
     markup = menu_keyboard()
     bot.send_message(
         message.chat.id,
@@ -160,6 +166,7 @@ def menu(message):
 
 @bot.message_handler(commands=['comment'])
 def comment(message):
+    """ /comment -> for leaving comments """
     bot.send_message(
         message.chat.id,
         'Fikringizni yozib qoldiring',
@@ -169,6 +176,7 @@ def comment(message):
 
 
 def save_comment(message):
+    """ For saving comments left by users """
     comments = CommentModel.objects.all()
     print(message.text)
     tg_user = UserModel.objects.get(tg_id=message.from_user.id)
@@ -179,6 +187,7 @@ def save_comment(message):
 
 
 def choose_lang(message):
+    """ Think about realising this option """
     markup = lang_list()
     bot.send_message(
         message.chat.id,
@@ -203,6 +212,6 @@ def command_start(message):
         tg_user = UserModel.objects.create(tg_id=message.from_user.id)
         bot.send_message(
             message.chat.id,
-            'Bu bot test holatida iwlamoqda va bu bot orqali yegulik buyurtma bera olmaysz, tuwunganingiz un rahmat'
+            'Bu bot test holatida iwlamoqda va bu bot orqali yegulik buyurtma bera olmaysz, tuwunganingiz un rahmat'  # I must change words here!
         )
         choose_lang(message)

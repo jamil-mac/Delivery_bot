@@ -56,6 +56,16 @@ def go_back():
     return keyboard
 
 
+def back_with_location():
+    keyboard = types.ReplyKeyboardMarkup(row_width=2)
+    keyboard.add(
+        types.KeyboardButton(text='location', request_location=True),
+        types.KeyboardButton(text='back'),
+    )
+
+    return keyboard
+
+
 def choices_keyboard():
     keyboard = types.InlineKeyboardMarkup()
     keyboard.row_width = 2
