@@ -14,25 +14,15 @@ def contact_btn():
     return keyboard
 
 
-def meal_category_menu():
-    keyboard = types.InlineKeyboardMarkup()
-    category = MealModel.objects.all()
-    for i in category:
-        keyboard.add(types.InlineKeyboardButton(f'{i.category.title}', callback_data=f'{i.category.title}'))
-
-    keyboard.add(types.InlineKeyboardButton('back', callback_data='go_back'))
-
-    return keyboard
-
-
 def meal_menu():
-    keyboard = types.ReplyKeyboardMarkup(row_width=2)
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.row_width = 2
     meal = MealModel.objects.all()
 
     for i in meal:
-        keyboard.add(types.KeyboardButton(f'{i.name}'))
+        keyboard.add(types.InlineKeyboardButton(f'{i.name}', callback_data='goods'))
 
-    keyboard.add(types.KeyboardButton('back'))
+    keyboard.add(types.InlineKeyboardButton('back', callback_data='go_back'))
 
     return keyboard
 
@@ -45,13 +35,11 @@ def go_back():
 
 
 def choices_keyboard():
-    keyboard = types.InlineKeyboardMarkup()
-    keyboard.row_width = 2
+    keyboard = types.ReplyKeyboardMarkup(row_width=2)
     keyboard.add(
-        types.InlineKeyboardButton('settings', callback_data='get_settings'),
-        types.InlineKeyboardButton('order', callback_data='order'),
-        types.InlineKeyboardButton('callback', callback_data='callback'),
-        types.InlineKeyboardButton('contact info', callback_data='contact')
+        types.KeyboardButton('settings'),
+        types.KeyboardButton('order'),
+        types.KeyboardButton('cart'),
     )
 
     return keyboard
@@ -64,12 +52,12 @@ def skip():
     return keyboard
 
 
-def lang_list():
+def meal_category_menu():
     keyboard = types.ReplyKeyboardMarkup(row_width=2)
-    keyboard.add(
-        types.KeyboardButton('uz'),
-        types.KeyboardButton('ru'),
-    )
+    category = [i.title for i in CategoryModel.objects.all()]
+    keyboard.add(types.KeyboardButton('cart'))
+    for i in category:
+        keyboard.add(types.KeyboardButton(f'{i}'))
 
     return keyboard
 
@@ -79,7 +67,6 @@ def change_settings():
     keyboard.add(
         types.InlineKeyboardButton('name', callback_data='set_name'),
         types.InlineKeyboardButton('number', callback_data='set_num'),
-        types.InlineKeyboardButton('language', callback_data='set_lang'),
         types.InlineKeyboardButton('back', callback_data='go_back'),
     )
 
